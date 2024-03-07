@@ -3,6 +3,10 @@ import * as submissionService from "./services/submissionService.js";
 import * as sse from "./sse/sse.js"
 import { serve } from "./deps.js";
 import { createClient } from "npm:redis@4.6.4";
+import { cacheMethodCalls } from "./util/cacheUtil.js";
+
+const cachedAssignmentService = cacheMethodCalls(assignmentService, []);
+const cachedSubmissionService = cacheMethodCalls(submissionService, ["submitAssignment", "gradeAssignment"]);
 
 /* Create a Redis channel for pub/sub communication with grader-api */
 const client = createClient({
@@ -16,7 +20,6 @@ const handleGrading = async (request) => {
   try {
     const submission_data = await request.json();
     if (sse.sseConnections.has(submission_data.user)) {
-      console.log(`Grading operation already in progress for user ${submission_data.user}`);
       return new Response(JSON.stringify({ message: 'Grading operation already in progress' }), { status: 429 });
     }
     const [submission_id, already_graded, grader_feedback, correct] = await submissionService.submitAssignment({

@@ -19,15 +19,6 @@ test("Correct submission results in correct result", async ({ page }) => {
   expect(feedbackTitle).toBe('Correct');
 });
 
-test("Correct submission results in correct result, and we can move to the next assignment", async ({ page }) => {
-  await page.goto("/");
-  await page.locator('textarea').fill(`def hello():  return "Hello"`);
-  await page.locator('button', { hasText: 'Submit'}).click();
-  await page.locator('.feedback-container').waitFor();
-  const feedbackTitle = await page.locator('.feedback-container h1').textContent();
-  expect(feedbackTitle).toBe('Correct');
-});
-
 test('Correct submission results in correct result, and we can move to the next assignment', async ({ page }) => {
   await page.goto("/");
   const oldTitle = await page.locator('h1.text-white.font-extrabold').textContent();
@@ -38,7 +29,7 @@ test('Correct submission results in correct result, and we can move to the next 
   expect(feedbackTitle).toBe('Correct');
   await page.locator('button', { hasText: 'Next assignment' }).click();
   await page.waitForSelector('h1.text-white.font-extrabold', {
-    state: 'visible', // Wait until the element is visible
+    state: 'visible',
   });
   const newTitle = await page.locator('h1.text-white.font-extrabold').textContent();
   expect(newTitle).not.toBe(oldTitle);

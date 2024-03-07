@@ -29,11 +29,11 @@
     const response_data = await response.json();
 
 
-    if ( response.status === 429 ) {
+    if (response.status === 429 ) {
       alert("Submission already in grading")
       pending.set(false);
     }
-    if (response_data.already_graded) {
+    else if (response_data.already_graded) {
       feedback.set(response_data.grader_feedback);
       gradingResult.set(response_data.correct);
       pending.set(false);
@@ -69,6 +69,7 @@
         const data = await response.json();
         assignment.set(data);
         gradingResult.set(null);
+        code = '# Start writing your code here.';
         feedback.set('');
       } else {
         console.error('Failed to fetch assignment:', response.statusText);
