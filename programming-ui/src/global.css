@@ -1,0 +1,9 @@
+.grid-background {
+    background-color: #111827; /* This would be slate-950, assuming a very dark shade */
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), /* Vertical lines */
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px); /* Horizontal lines */
+  
+    background-size: 40px 40px; /* Size of the grid squares */
+    background-position: 0 0, 0 0; /* Positioning of the grid lines */
+  }

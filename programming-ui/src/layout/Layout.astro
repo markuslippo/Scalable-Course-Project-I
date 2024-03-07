@@ -1,0 +1,24 @@
+---
+import Header from "../components/Header.svelte";
+import Handout from "../components/Handout.svelte";
+import Feedback from "../components/Feedback.svelte";
+import GradingButton from "../components/GradingButton.svelte";
+import "../global.css";
+---
+<html lang="en" class="grid-background h-full bg-slate-900">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Python Programming</title>
+  </head>
+  <body class="h-full">
+    <Header client:only={"svelte"}/>
+    <div class=" pt-10 h-full">
+      <Handout client:only={"svelte"} />
+      <GradingButton client:only={"svelte"} />
+      <Feedback client:only={"svelte"}>
+    </div>
+  </body>
+</html>
