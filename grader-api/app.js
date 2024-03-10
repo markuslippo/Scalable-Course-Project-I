@@ -1,56 +1,95 @@
 import { grade } from "./services/gradingService.js";
-import { createClient } from "npm:redis@4.6.4";
-const DEBUG = false
+import { redis, waitForRedis } from "./redis.js";
 
-const client = createClient({
-  url: "redis://redis:6379",
-  pingInterval: 1000,
-});
+const STREAM_WAIT_TIME = 5000
+const EVENT_IDLE_TIME = 600000
 
-await client.connect();
+const streamName = "GRADING_STREAM";
+const streamGroup = "GRADING_GROUP";
+const consumerName = `grader-${Math.random().toString(16).slice(2)}`;
 
+await waitForRedis();
+await createConsumerGroup();
+await removeIdleConsumers();
 
-await client.subscribe(
-  "gradingQueue",
-  async (message, channel) => { 
-    try {
-      const data = JSON.parse(message);
-      const result = await grade(data.code, data.test_code);
-      
-      if(DEBUG) {
-        console.log("\n########################");
-        console.log("Grader received payload: ", data);
-        console.log(`Grading is correct: ${result.charAt(0) === '.'}`);
-        console.log("Grader feedback: ", result);
-        console.log("########################\n");
-      }
-      
-      const correct = result.charAt(0) === '.';
-      const grade_result = {
-        programming_assignment_submission_id: data.submission_id,
-        uuid: data.uuid,
-        correct: correct,
-        grader_feedback: result
-      };
+while(true) {
+  try {
+    let event = await claimPendingSubmission();
 
-      const response = await fetch("http://project1-nginx-1:7800/api/grade-result", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(grade_result)
-      })
-
-      if(DEBUG) {
-        if (!response.ok) {
-          console.error('Failed to submit for grading');
-          alert('Failed to submit for grading');
-          return;
-        }
+    if(event === null) {
+      event = await readSubmissionFromStream();
     }
 
+    if(event === null) {
+      continue
+    }
+
+    const id = event.id;
+    const submission_id = event.message.submission_id;
+    const uuid =  event.message.uuid;
+    const code = event.message.code;
+    const test_code = event.message.test_code;
+    console.log("Grader-api received code: ", code);
+    console.log("Grader-api received test code: ", test_code);
+
+    const result = await grade(code, test_code)
+    const correct = result.charAt(0) === '.';
+    const gradeResult = {
+      programming_assignment_submission_id: submission_id,
+      uuid: uuid,
+      correct: correct,
+      grader_feedback: result
+    };
+    
+    await fetch("http://project1-nginx-1:7800/api/grade-result", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(gradeResult)
+    });
+
+    await acknowledgeMessage(id);
+
+    console.log(`Message ${id} acknowledged!`)
     } catch (error) {
-      console.error("Error with grading assignment:", error);
+      console.log("Error reading from stream", error);
+    }
+}
+
+async function createConsumerGroup() {
+  try {
+    await redis.xGroupCreate(streamName, streamGroup, '$', { MKSTREAM: true })
+  } catch(error) {
+    if (error.message !== "BUSYGROUP Consumer Group name already exists") throw error
+    console.log("Consumer group already exists, skipping creation")
+  }
+}
+
+async function removeIdleConsumers() {
+  const consumers = await redis.xInfoConsumers(streamName, streamGroup)
+  for (const consumer of consumers) {
+    if (consumer.pending === 0) {
+      await redis.xGroupDelConsumer(streamName, streamGroup, consumer.name)
     }
   }
-);
+}
+
+async function claimPendingSubmission() {
+  const response = await redis.xAutoClaim(streamName, streamGroup, consumerName, EVENT_IDLE_TIME, '-', { COUNT: 1 })
+  return response.messages.length === 0 ? null : response.messages[0]
+}
+
+async function readSubmissionFromStream() {
+  const response = await redis.xReadGroup(streamGroup, streamName, [
+    { key: streamName, id: '>' }
+  ], {
+    COUNT: 1,
+  })
+
+  return response === null ? null : response[0].messages[0]
+}
+
+async function acknowledgeMessage(id) {
+  await redis.xAck(streamName, streamGroup, id)
+}

@@ -2,50 +2,50 @@ import * as assignmentService from "./services/assignmentService.js";
 import * as submissionService from "./services/submissionService.js";
 import * as sse from "./sse/sse.js"
 import { serve } from "./deps.js";
-import { createClient } from "npm:redis@4.6.4";
+import { redis } from "./redis.js";
+
 import { cacheMethodCalls } from "./util/cacheUtil.js";
 
 const cachedAssignmentService = cacheMethodCalls(assignmentService, []);
 const cachedSubmissionService = cacheMethodCalls(submissionService, ["submitAssignment", "gradeAssignment"]);
 
-/* Create a Redis channel for pub/sub communication with grader-api */
-const client = createClient({
-  url: "redis://redis:6379",
-  pingInterval: 1000,
-})
-
-await client.connect();
+const streamName = "GRADING_STREAM";
 
 const handleGrading = async (request) => {
   try {
-    const submission_data = await request.json();
-    if (sse.sseConnections.has(submission_data.user)) {
+    const submissionData = await request.json();
+
+    if (sse.sseConnections.has(submissionData.user)) {
       return new Response(JSON.stringify({ message: 'Grading operation already in progress' }), { status: 429 });
     }
-    const [submission_id, already_graded, grader_feedback, correct] = await submissionService.submitAssignment({
-      uuid: submission_data.user,
-      id: submission_data.programming_assignment_id,
-      code: submission_data.code
+
+    const [submissionId, alreadyGraded, graderFeedback, correct] = await cachedSubmissionService.submitAssignment({
+      uuid: submissionData.user,
+      id: submissionData.programming_assignment_id,
+      code: submissionData.code
     });
 
-    if (already_graded) {
-      return new Response(JSON.stringify({submission_id: submission_id, already_graded: already_graded, grader_feedback: grader_feedback, correct: correct}, {status: 200}));
-
+    if (alreadyGraded) {
+      return new Response(JSON.stringify({
+        submission_id: submissionId,
+        already_graded: alreadyGraded,
+        grader_feedback: graderFeedback,
+        correct: correct
+      }), { status: 200 });
     } else {
-      const test_code = await assignmentService.findTestCode(submission_data.programming_assignment_id);
+      
+      const submission_id = submissionId.toString();
+      const uuid = submissionData.user;
+      const code = submissionData.code;
+      const test_code = await cachedAssignmentService.findTestCode(submissionData.programming_assignment_id);
+         
+      await redis.xAdd(streamName, '*', { submission_id, uuid, code, test_code });
 
-      client.publish("gradingQueue", JSON.stringify({
-        submission_id: submission_id,
-        uuid: submission_data.user,
-        code: submission_data.code,
-        test_code: test_code
-      }));
-
-      return new Response(JSON.stringify({submission_id: submission_id, already_graded: already_graded },  {status: 200 }));
+      return new Response(JSON.stringify({ submission_id: submissionId, already_graded: alreadyGraded }, { status: 200 }));
     }
   } catch (error) {
     console.error('Error handling grading request:', error);
-    return new Response(JSON.stringify({message: 'Internal server error'}), {status: 500});
+    return new Response(JSON.stringify({ message: 'Internal server error' }), { status: 500 });
   }
 };
 
@@ -59,7 +59,7 @@ const handleGradingResult = async (request) => {
   }
   const uuid = grading_result.uuid;
 
-  await submissionService.gradeAssignment(graded_submission);
+  await cachedSubmissionService.gradeAssignment(graded_submission);
 
   const sseController = sse.sseConnections.get(uuid);
 
@@ -82,7 +82,7 @@ const handleNextAssignment = async (request) => {
   if (!uuid) {
     return new Response(JSON.stringify({ error: "UUID required" }), { status: 400 });
   }
-  const nextProgrammingAssignment = await assignmentService.findNextAssignment(uuid);
+  const nextProgrammingAssignment = await cachedAssignmentService.findNextAssignment(uuid);
   if (!nextProgrammingAssignment) {
     return new Response(JSON.stringify({ error: "No next assignment found" }), { status: 404 });
   }
@@ -103,7 +103,7 @@ const handleNextAssignment = async (request) => {
 
 
 const handleAssignments = async () => {
-  const programmingAssignments = await assignmentService.findAllAssignments();
+  const programmingAssignments = await cachedAssignmentService.findAllAssignments();
   return Response.json(programmingAssignments);
 };
 
