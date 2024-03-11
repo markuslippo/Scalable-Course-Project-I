@@ -1,10 +1,19 @@
-TODO: The RUNNING.md briefly outlines steps needed to run the application.
+# To run the application:
 
+Prequisites: 
+    cd grader-api
+    docker build -t grader-image .
 
+    and
 
+    cd programming-ui
+    npm install
 
+To run:
+docker compose up
 
-To test:
+To run tests:
+docker compose run --rm --entrypoint npx e2e-playwright playwright test
 
-make sure everything is up and running with docker compose
-then run docker compose run --rm --entrypoint npx e2e-playwright playwright test
+On the browser:
+http://localhost:7800
