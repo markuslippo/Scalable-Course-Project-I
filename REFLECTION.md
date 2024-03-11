@@ -17,7 +17,7 @@ one grader-api. Additionally, the number of deployments can be easily increased.
 # Future improvements
 
     Improvements for performance:
-    - Compressing sent contents
+    - Compressing sent contents. This was not developed as there was some uncertainty with SSE supported Nginx configurations
     - Comparing a hash of the code instead of comparing possibly long strings
     - Having the grader-api read the test_code from the database instead of sending it
 
