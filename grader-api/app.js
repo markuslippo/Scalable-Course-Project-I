@@ -1,5 +1,6 @@
 import { grade } from "./services/gradingService.js";
 import { redis, waitForRedis } from "./redis.js";
+const apiGatewayUrl = Deno.env.get("API_GATEWAY_URL");
 
 const STREAM_WAIT_TIME = 5000
 const EVENT_IDLE_TIME = 600000
@@ -41,7 +42,7 @@ while(true) {
       grader_feedback: result
     };
     
-    await fetch("http://project1-nginx-1:7800/api/grade-result", {
+    await fetch(`${apiGatewayUrl}/api/grade-result`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -84,6 +84,8 @@ services:
         delay: "5s"
         max_attempts: 5
         window: "30s"
+    environment:
+    - API_GATEWAY_URL=http://nginx:7800
 
   database:
     container_name: database-server-dab-p1-f46871e7-6773-4257-9650-e92f689c20a8

@@ -16,6 +16,18 @@ one grader-api. Additionally, the number of deployments can be easily increased.
 
 # Future improvements
 
+    There are weird errors regarding websockets, which I have not used. Will need to figure out what is causing this as everything still works
+
+    client.ts:634 WebSocket connection to 'ws://localhost:7800/' failed: 
+    setupWebSocket @ client.ts:634
+    Show 1 more frame
+    Show less
+    client.ts:634 Uncaught (in promise) DOMException: Failed to construct 'WebSocket': The URL 'ws://localhost:undefined/' is invalid.
+    at setupWebSocket (http://localhost:7800/@vite/client:957:20)
+    at fallback (http://localhost:7800/@vite/client:936:22)
+    at WebSocket.<anonymous> (http://localhost:7800/@vite/client:972:13)
+    proxy.js?v=36fac1db:15 [HMR][Svelte] Unrecoverable HMR error in <Header>: next update will trigger a full reload
+
     Improvements for performance:
     - Compressing sent contents. This was not developed as there was some uncertainty with SSE supported Nginx configurations
     - Comparing a hash of the code instead of comparing possibly long strings

@@ -1,7 +1,7 @@
 # To run the application:
 
 Prequisites: 
-    cd grader-api
+    cd grader-image
     docker build -t grader-image .
 
     and
@@ -12,7 +12,7 @@ Prequisites:
 To run:
     development: docker compose up
     or 
-    production: docker compose -f docker-compose.prod.yml up
+    production: docker compose --profile migrate -f docker-compose.prod.yml up
 
     note, on my system it takes a few minutes to start up programming-api: wait for it's "listening on" log
 
